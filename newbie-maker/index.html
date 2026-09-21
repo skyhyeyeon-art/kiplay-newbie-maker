@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>신입사원 메이커: 20년 후의 나 — 프로토타입 v4</title>
 <style>
   :root{
@@ -16,7 +16,8 @@
     background-color:var(--cream);
     background-image:radial-gradient(#d8ceb2 1.3px, transparent 1.4px);
     background-size:22px 22px;color:var(--ink);min-height:100vh;word-break:keep-all;overflow-wrap:break-word}
-  .wrap{max-width:640px;margin:0 auto;padding:18px 16px 60px}
+  .wrap{max-width:640px;margin:0 auto;
+    padding:18px calc(16px + env(safe-area-inset-right)) calc(60px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left))}
   .ghead{display:flex;align-items:center;gap:8px;margin-bottom:16px}
   .ghead .logo{font-size:26px;line-height:1}
   .ghead .title{font-size:18px;font-weight:800;color:var(--blue-d);letter-spacing:-.5px}
@@ -214,6 +215,45 @@
   .fx .fxnote{white-space:normal;color:var(--bad);font-weight:800;margin:2px 0 8px}
   @keyframes fxbg{0%{opacity:0}100%{opacity:1}}
   @keyframes fxpop{0%{opacity:0;transform:scale(.7) translateY(12px)}100%{opacity:1;transform:none}}
+  /* ===== 모바일 반응형 (데스크톱 회귀 없음 — max-width 안에서만 조정) ===== */
+  .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  @media(max-width:480px){
+    /* 카드/타이포 유동화 */
+    .wrap{padding-top:14px;
+      padding-left:calc(13px + env(safe-area-inset-left));
+      padding-right:calc(13px + env(safe-area-inset-right));
+      padding-bottom:calc(46px + env(safe-area-inset-bottom))}
+    .card{padding:clamp(15px,4.6vw,22px);border-radius:16px}
+    h1{font-size:clamp(20px,5.8vw,24px)}
+    h2{font-size:clamp(15px,4.4vw,17px)}
+    .ghead .title{font-size:clamp(15px,4.4vw,18px)}
+    .sub{font-size:clamp(12px,3.4vw,13px)}
+    .charcard{padding:18px 15px}
+    .charcard .cname{font-size:clamp(18px,5.2vw,22px)}
+    /* 이미지·SVG·사원증이 화면 밖으로 넘치지 않도록 */
+    img,svg{max-width:100%;height:auto}
+    .idcard{max-width:100%}
+    .idphoto img,.idphoto svg{height:98%}
+    /* 탭 타깃 ≥44px + 손가락 간격 확보 */
+    .btn{padding:14px 16px;min-height:50px}
+    .row2{gap:12px}
+    .choices{gap:12px}
+    .choice{min-height:48px;padding:14px 15px}
+    .genderseg{gap:10px}
+    .gseg{min-height:46px;padding:11px 6px}
+    .charopt{min-height:46px}
+    .charpick{gap:10px}
+    /* 결과 스탯칩(3열)이 좁을 때 여백 축소 */
+    .statrow{gap:6px}
+    .statchip{padding:7px 4px}
+    .statchip .l{font-size:10px}
+    .statchip .v{font-size:12.5px}
+  }
+  @media(max-width:360px){
+    .charpick{grid-template-columns:1fr}
+    .dex{grid-template-columns:repeat(2,1fr)}
+    .idcard{width:180px}
+  }
 </style>
 </head>
 <body>
@@ -573,6 +613,28 @@ function buildTurns(seed){
   return shuffle(p,rnd);
 }
 
+/* ---------- KIPlay 허브 온보딩 ---------- */
+// ?onboard=1 로 열리면: 닉네임 안내(실명·사번 금지) + 결과에서 사원증 자동 생성 + "허브 입장" 버튼.
+// 입장 시 이름·성별·결과 타입·카드 이미지를 같은 도메인 localStorage(kiplay.profile)에 저장 → /lobby-next/ 가 읽어 캐릭터를 만든다. 서버 전송 없음.
+const ONBOARD=/(^|[?&])onboard=1(&|$)/.test(location.search);
+const PROFILE_KEY="kiplay.profile";
+let __hubCard=null;
+function enterHub(){
+  if(!G||!G.result) return;
+  var ch=G.result.ch||{};
+  var profile={v:1,name:G.nick,gender:G.gender,type:ch.id||"균형",typeName:ch.name||"",emoji:ch.e||"",charIdx:chosenChar,
+    grade:G.result.grade,score:G.result.score,card:__hubCard,at:new Date().toISOString(),fresh:true};
+  try{ localStorage.setItem(PROFILE_KEY,JSON.stringify(profile)); }
+  catch(e){ try{ profile.card=null; localStorage.setItem(PROFILE_KEY,JSON.stringify(profile)); }catch(e2){} }
+  location.href="/lobby-next/";
+}
+function renderHubEnter(ready){
+  var h=document.getElementById('hubEnter'); if(!h) return;
+  h.innerHTML='<div class="card ctaband" style="margin-top:10px"><h2>🏢 KIPlay 로비로 입장</h2>'
+    +'<p class="sub" style="margin:0">이 사원증의 <b>'+(G.result&&G.result.ch?G.result.ch.name:'')+'</b> 캐릭터가 로비의 내 아바타가 돼요.</p><div style="height:10px"></div>'
+    +'<button class="btn blue" style="width:100%" onclick="enterHub()" '+(ready?'':'disabled')+'>'+(ready?'로비 입장하기 →':'사원증 만드는 중…')+'</button></div>';
+}
+
 /* ---------- 상태 ---------- */
 let G=null;
 let chosenChar=0, chosenGender="여";
@@ -581,10 +643,10 @@ function selectChar(i){ chosenChar=i; document.querySelectorAll('.charopt').forE
   renderHeroBadge(); }
 function selectGender(g){ chosenGender=g; document.querySelectorAll('.gseg').forEach(function(el){ el.classList.toggle('on', el.getAttribute('data-g')===g); });
   var cp=document.getElementById('charpick'); if(cp) cp.innerHTML=pickerButtonsHTML(); renderHeroBadge(); }
-function newGame(nick,seed){
+function newGame(nick,seed,shared){
   const s={}; STAT_KEYS.forEach(k=>s[k]=START_STAT); s.hp=START_HPMP; s.mp=START_HPMP;
   const like={}; STAT_KEYS.forEach(k=>like[k]=0);
-  G={nick,seed,stats:s,like,trait:{social:0,novelty:0,belonging:0},
+  G={nick,seed,shared:!!shared,stats:s,like,trait:{social:0,novelty:0,belonging:0},
      turns:buildTurns(seed),t:0,burnout:0,startTime:Date.now(),log:[],painPick:null,char:CHARS[chosenChar]};
   G.gender=chosenGender; G.charY=imgFor(chosenChar,chosenGender,false); G.charO=imgFor(chosenChar,chosenGender,true);
 }
@@ -627,6 +689,38 @@ function lbKey(seed){return "nm4_lb_"+seed;}
 function loadLB(seed){try{return JSON.parse(localStorage.getItem(lbKey(seed)))||[];}catch(e){return[];}}
 function saveScore(seed,e){const lb=loadLB(seed);lb.push(e);lb.sort((a,b)=>b.score-a.score||a.time-b.time);
   localStorage.setItem(lbKey(seed),JSON.stringify(lb.slice(0,50)));return lb.findIndex(x=>x.id===e.id);}
+
+/* ---------- 공유 리더보드(구글시트 Apps Script) ---------- */
+// 배포 후 이 줄에 Apps Script 웹앱 URL(.../exec)을 넣으면 실제 공유 리더보드가 켜집니다.
+// 비어있으면(기본값) 대회 코드를 넣어도 이 브라우저에만 저장되는 기존 방식으로 동작합니다.
+const LB_API_URL = "";
+function isShared(){ return !!(G && G.shared && LB_API_URL); }
+function submitScoreShared(entry){
+  return fetch(LB_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({action:"submit",eventCode:G.seed,id:entry.id,nick:entry.nick,score:entry.score,grade:entry.grade,char:entry.char,time:entry.time})
+  }).then(function(r){return r.json();});
+}
+function fetchLBShared(seed,limit){
+  return fetch(LB_API_URL+"?action=list&eventCode="+encodeURIComponent(seed)+"&limit="+(limit||10)).then(function(r){return r.json();});
+}
+function escHtml(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function renderSharedLB(list,meId,myRank,total){
+  var b=document.getElementById('lbBody'); if(!b) return;
+  if(!list||!list.ok||!list.entries||!list.entries.length){ b.innerHTML='<p class="sub">아직 기록이 없습니다. 첫 주자가 되어보세요!</p>'; return; }
+  var rows=list.entries.map(function(e,i){
+    return '<tr class="'+(e.id===meId?'me':'')+'"><td class="rank">'+(i+1)+'</td><td>'+escHtml(e.nick)+'</td><td>'+(GRADE_EMOJI[e.grade]||'')+' <b>'+Number(e.score).toLocaleString()+'</b></td><td style="font-size:12px">'+escHtml(e.char||'-')+'</td></tr>';
+  }).join('');
+  var meNote=(myRank && myRank>10)?('<p class="sub">내 등수: '+myRank+'위 / '+(total||list.total||'?')+'명 중</p>'):'';
+  b.innerHTML='<table><tr><th class="rank">#</th><th>닉네임</th><th>점수</th><th>캐릭터</th></tr>'+rows+'</table>'+meNote;
+}
+function refreshSharedLB(entry){
+  submitScoreShared(entry).then(function(res){
+    return fetchLBShared(G.seed,10).then(function(list){ renderSharedLB(list,entry.id,res&&res.rank,res&&res.total); });
+  }).catch(function(){
+    var b=document.getElementById('lbBody');
+    if(b) b.innerHTML='<p class="sub">리더보드를 불러오지 못했어요. 네트워크를 확인해주세요.</p>';
+  });
+}
 
 /* ============================================================ 렌더 ============================================================ */
 const app=document.getElementById("app");
@@ -677,6 +771,7 @@ function screenStart(){
     </div>
     <div style="border-top:2px dashed #cabfa4;margin:16px 0 12px"></div>
     <label>닉네임 <span style="font-weight:400;color:#8a94a8">(사원증에 새겨져요)</span></label>
+    ${ONBOARD?`<p class="muted" style="margin:0 0 6px;color:#b0483a"><b>실명·사번·이메일은 쓰지 마세요.</b> 이 닉네임으로 KIPlay 로비에 등장해요.</p>`:``}
     <input id="nick" type="text" maxlength="12" placeholder="예: 키피" oninput="updateBadgeName(this.value)" />
     <label>내 캐릭터 고르기 <span style="font-weight:400;color:#8a94a8">(성별·성격 선택 · 아래 사원증이 바뀌어요)</span></label>
     <div class="genderseg">${genderSegHTML()}</div>
@@ -705,7 +800,7 @@ function start(){
   const nick=(document.getElementById("nick").value||"익명").trim().slice(0,12);
   const seedInput=(document.getElementById("seed").value||"").trim();
   const seed = seedInput || randSeed(); // 대회 코드 없으면 매번 다른 문항
-  newGame(nick,seed); screenTurn();
+  newGame(nick,seed,!!seedInput); screenTurn();
 }
 function randSeed(){ return "연습-"+Math.floor(Math.random()*1e9).toString(36); }
 function startRandom(){
@@ -931,7 +1026,7 @@ function screenResult(){
   const bgIdx=(RESULT_BG[ch.id]!=null)?RESULT_BG[ch.id]:1;
   const dex=addDex(ch.id);
   const entry={id:Date.now()+"-"+Math.floor(Math.random()*1e6),nick:G.nick,score,grade,time,char:ch.name};
-  const myRank=saveScore(G.seed,entry);
+  if(!isShared()) saveScore(G.seed,entry);
 
   const painText = G.painPick || PAIN[(s.mp<40)?"낮은멘탈":low];
   const es = energyStyle(s.mp, G.burnout);
@@ -994,6 +1089,7 @@ function screenResult(){
       <div style="font-size:12px;color:#6b5a1a;margin-bottom:9px">이미지로 저장해 동료에게 자랑해 보세요!</div>
       <div id="cardArea" style="margin-bottom:9px"></div>
       <button id="genCardBtn" class="btn blue" onclick="makeCard()">결과 카드 생성하기 ✨</button>
+      <div id="hubEnter"></div>
     </div>
     <button class="btn" onclick="screenStart()">🔄 다른 신입으로 다시 키우기</button>
     <div style="height:9px"></div>
@@ -1010,13 +1106,15 @@ function screenResult(){
   </div>
 
   <div class="card">
-    <h2>🏆 리더보드 (${G.seed})</h2>
-    ${lbTable(G.seed,entry.id)}
-    <p class="muted">💡 점수는 '얼마나 잘 키웠나'를 보여주는 <b>육성 게임 점수</b>예요.<br>성향·캐릭터엔 정답도 우열도 없으니 편하게 즐기세요 — 다시 하면 쑥쑥 올라요!<br>※ 프로토타입은 이 브라우저에만 저장됩니다.</p>
+    <h2>🏆 리더보드 (${G.seed})${isShared()?' <span style="font-size:12px;color:#8a94a8;font-weight:600">· 전체 참가자 공유</span>':''}</h2>
+    <div id="lbBody">${isShared()?'<p class="sub">불러오는 중…</p>':lbTable(G.seed,entry.id)}</div>
+    <p class="muted">${isShared()?'💡 대회 코드가 같은 모든 참가자와 실시간으로 공유되는 리더보드예요.':"💡 점수는 '얼마나 잘 키웠나'를 보여주는 <b>육성 게임 점수</b>예요.<br>성향·캐릭터엔 정답도 우열도 없으니 편하게 즐기세요 — 다시 하면 쑥쑥 올라요!<br>※ 연습 모드는 이 브라우저에만 저장됩니다."}</p>
   </div>`);
   drawRadar("radarResult", s);
+  if(isShared()) refreshSharedLB(entry);
+  if(ONBOARD){ renderHubEnter(false); makeCard(); }
 }
-function start2(){ newGame(G.nick,G.seed); screenTurn(); }
+function start2(){ newGame(G.nick,G.seed,G.shared); screenTurn(); }
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 function loadImg(src){ return new Promise(function(res,rej){ var i=new Image(); i.onload=function(){res(i);}; i.onerror=function(){rej();}; i.src=src; }); }
 function makeCard(){
@@ -1084,42 +1182,86 @@ function makeCard(){
     ctx.textAlign="center"; ctx.fillStyle="#8a7f6a"; ctx.font="700 17px 'Malgun Gothic',sans-serif";
     ctx.fillText("신입사원 메이커 · 20년 후의 나", W/2, H-40);
     var url=cv.toDataURL('image/png');
+    __hubCard=url; if(ONBOARD) renderHubEnter(true);
     var fname='신입사원메이커_'+G.nick+'.png';
+    var roleStr2=(r.ch?(r.ch.e+' '+r.ch.name):'');
+    var shareText=G.nick+'의 20년 후 사원증 — '+roleStr2+' (신입사원 메이커)';
     document.getElementById('cardArea').innerHTML=
       '<img id="cardImg" src="'+url+'" alt="결과 카드" style="max-width:100%;border:2.5px solid #1c1a17;border-radius:12px;display:block;box-shadow:2px 2px 0 #1c1a17"/>'
-     +'<button id="saveCardBtn" class="btn blue" style="margin-top:8px;width:100%">💾 이미지 저장</button>'
-     +'<div style="font-size:11px;color:#6b5a1a;margin-top:6px;text-align:center;line-height:1.4">저장 버튼이 안 되면 <b>카드 이미지를 우클릭(PC)·꾹 누르기(폰)</b> → 이미지 저장</div>';
+     +'<div class="sharegrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">'
+     +'<button id="saveCardBtn" class="btn blue" style="margin:0">💾 이미지 저장</button>'
+     +'<button id="shareAnyBtn" class="btn blue" style="margin:0;background:#1c1a17">📤 다른 앱으로 공유</button>'
+     +'<button id="shareKakaoBtn" class="btn" style="margin:0;background:#fee500;color:#1c1a17">💬 카카오톡</button>'
+     +'<button id="shareThreadsBtn" class="btn" style="margin:0;background:#000;color:#fff">🧵 Threads</button>'
+     +'<button id="shareInstaBtn" class="btn" style="margin:0;grid-column:1/-1;background:linear-gradient(90deg,#f58529,#dd2a7b,#8134af);color:#fff">📸 Instagram</button>'
+     +'</div>'
+     +'<div id="shareMsg" style="font-size:11px;color:#6b5a1a;margin-top:6px;text-align:center;line-height:1.4">저장이 안 되면 <b>카드 이미지를 우클릭(PC)·꾹 누르기(폰)</b> → 이미지 저장</div>';
     var gb=document.getElementById('genCardBtn'); if(gb) gb.style.display='none';
-    var sb=document.getElementById('saveCardBtn'), blobRef=null, fileRef=null;
-    function dlCard(){ var a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); }
-    function fallbackSave(){
-      if(fileRef && navigator.canShare && navigator.canShare({files:[fileRef]})){
-        navigator.share({files:[fileRef],title:'신입사원 메이커 결과',text:G.nick+'의 20년 후 사원증!'}).catch(function(){ dlCard(); });
-      } else { dlCard(); }
+    var blobRef=null, fileRef=null, blobUrl=null, hosted=null;
+    var msg=function(t){ var m=document.getElementById('shareMsg'); if(m) m.innerHTML=t; };
+    var isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints>1 && innerWidth<900);
+    // ---- 다운로드: Blob URL(대용량 dataURL보다 안정) → 실패 시 새 탭으로 열어 저장 안내
+    function dlCard(){
+      try{
+        var a=document.createElement('a'); a.href=blobUrl||url; a.download=fname; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove();
+        msg('💾 다운로드를 시작했어요. 안 보이면 브라우저의 다운로드 목록을 확인하세요. (iOS는 사진 앱 대신 파일 앱에 저장돼요)');
+      }catch(e){ var w=window.open(blobUrl||url,'_blank'); msg(w?'새 탭에 열린 이미지를 길게 눌러(폰)·우클릭(PC) 저장하세요':'팝업이 막혔어요 — 카드 이미지를 길게 눌러 저장하세요'); }
     }
-    sb.onclick=function(){
-      if(window.claude && typeof window.claude.use==='function' && blobRef){
-        window.claude.use('downloads').then(function(d){
-          if(d){ d.save({filename:fname,data:blobRef}).catch(function(){ fallbackSave(); }); } else { fallbackSave(); }
-        }).catch(function(){ fallbackSave(); });
-      } else { fallbackSave(); }
-    };
+    // ---- Web Share(다른 앱으로): 파일 공유 가능하면 파일, 아니면 링크(호스팅된 카드) 또는 텍스트
+    function canShareFile(){ return !!(fileRef && navigator.canShare && navigator.canShare({files:[fileRef]})); }
+    function shareAny(){
+      if(navigator.share){
+        var data = canShareFile() ? {files:[fileRef],title:'신입사원 메이커',text:shareText} : {title:'신입사원 메이커',text:shareText,url:(hosted&&hosted.url)||location.href.split('?')[0]};
+        navigator.share(data).then(function(){ msg('공유했어요 🎉'); }).catch(function(e){ if(e&&e.name==='AbortError') return; copyLink(); });
+      } else { copyLink(); }
+    }
+    function copyLink(){
+      var link=(hosted&&hosted.url)||location.href.split('?')[0];
+      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(link+'\n'+shareText).then(function(){ msg('이 브라우저는 앱 공유를 지원하지 않아 <b>링크를 복사</b>했어요. 원하는 앱에 붙여넣으세요.'); }).catch(function(){ msg('링크: '+link); }); }
+      else msg('링크: '+link);
+    }
+    // ---- 카카오톡: 카드 링크(OG 미리보기) 공유. 호스팅 실패 시 저장 후 안내
+    function shareKakao(){
+      if(hosted&&hosted.url){ window.open('https://sharer.kakao.com/talk/friends/picker/link?url='+encodeURIComponent(hosted.url)+'&text='+encodeURIComponent(shareText),'_blank','noopener'); msg('카카오톡 공유 창을 열었어요. 미리보기에 사원증이 보여요.'); }
+      else { dlCard(); msg('카드 링크를 만들지 못해 <b>이미지를 저장</b>했어요. 카카오톡에서 사진으로 보내주세요.'); }
+    }
+    // ---- Threads: 텍스트 인텐트(링크 포함 → 미리보기)
+    function shareThreads(){
+      var link=(hosted&&hosted.url)||location.href.split('?')[0];
+      window.open('https://www.threads.net/intent/post?text='+encodeURIComponent(shareText+'\n'+link),'_blank','noopener'); msg('Threads 작성 창을 열었어요. 이미지는 저장해 첨부하면 더 예뻐요.');
+    }
+    // ---- Instagram: 웹 공유 인텐트가 없음 → 폰은 공유 시트(파일)에서 Instagram 선택, PC는 저장 후 앱 업로드 안내
+    function shareInsta(){
+      if(canShareFile()){ navigator.share({files:[fileRef],title:'신입사원 메이커',text:shareText}).then(function(){ msg('공유 시트에서 <b>Instagram</b>을 고르면 스토리/게시물로 올릴 수 있어요.'); }).catch(function(e){ if(e&&e.name!=='AbortError'){ dlCard(); } }); }
+      else { dlCard(); msg('이미지를 저장했어요. <b>Instagram 앱</b>에서 스토리/게시물로 올려주세요.'+(isMobile?'':' (PC 웹 인스타그램은 이미지 업로드를 지원해요: instagram.com → 만들기)')); }
+    }
+    document.getElementById('saveCardBtn').onclick=dlCard;
+    document.getElementById('shareAnyBtn').onclick=shareAny;
+    document.getElementById('shareKakaoBtn').onclick=shareKakao;
+    document.getElementById('shareThreadsBtn').onclick=shareThreads;
+    document.getElementById('shareInstaBtn').onclick=shareInsta;
     if(cv.toBlob){ cv.toBlob(function(blob){
       if(!blob) return; blobRef=blob;
+      try{ blobUrl=URL.createObjectURL(blob); }catch(e){}
       try{ fileRef=new File([blob],fname,{type:'image/png'}); }catch(e){}
-      if(navigator.canShare && fileRef && navigator.canShare({files:[fileRef]})){ sb.textContent='💾 이미지 저장 / 공유'; }
+      if(canShareFile()){ var sb=document.getElementById('shareAnyBtn'); if(sb) sb.textContent='📤 다른 앱으로 공유 (이미지)'; }
     },'image/png'); }
-  }).catch(function(){ document.getElementById('cardArea').innerHTML='<div style="color:#d64545;font-size:13px;font-weight:700">카드 생성 실패 😢 다시 시도해 주세요.</div>'; });
+    // ---- 카드 호스팅(KIPlay 허브 안에서만): 링크 공유용 URL. 실패해도 저장·파일 공유는 그대로.
+    try{
+      fetch('/api/cards',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({png:url,nick:G.nick,role:roleStr2})})
+        .then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j&&j.url){ hosted=j; window.__hubCardUrl=j.url; } }).catch(function(){});
+    }catch(e){}
+  }).catch(function(){ document.getElementById('cardArea').innerHTML='<div style="color:#d64545;font-size:13px;font-weight:700">카드 생성 실패 😢 다시 시도해 주세요.</div>'; if(ONBOARD) renderHubEnter(true); });
 }
 
 function lbTable(seed,meId){
   const lb=loadLB(seed).slice(0,10);
   if(!lb.length) return `<p class="sub">아직 기록이 없습니다. 첫 주자가 되어보세요!</p>`;
-  return `<table><tr><th class="rank">#</th><th>닉네임</th><th>점수</th><th>캐릭터</th></tr>
+  return `<div class="tscroll"><table><tr><th class="rank">#</th><th>닉네임</th><th>점수</th><th>캐릭터</th></tr>
     ${lb.map((e,i)=>`<tr class="${e.id===meId?'me':''}"><td class="rank">${i+1}</td>
       <td>${e.nick}</td><td>${GRADE_EMOJI[e.grade]||""} <b>${e.score.toLocaleString()}</b></td>
       <td style="font-size:12px">${e.char||e.ending||"-"}</td></tr>`).join("")}
-  </table>`;
+  </table></div>`;
 }
 
 screenStart();
