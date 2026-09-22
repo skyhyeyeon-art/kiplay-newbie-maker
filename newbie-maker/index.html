@@ -44,6 +44,20 @@
   .btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
   .btn.ghost{background:#fff;color:var(--ink)}
   .btn.blue{background:var(--blue);color:#fff}
+  /* ===== 로비 입장 CTA: 인스타그램(주황-핑크-보라) 그라디언트와 겹치지 않는 틸→블루 계열 ===== */
+  .btn.hubcta{position:relative;overflow:hidden;color:#fff;border-color:var(--ink);
+    background:linear-gradient(120deg,#0fb8ab 0%,#12a0d6 55%,#3161e0 100%);
+    box-shadow:3px 3px 0 var(--ink);animation:hubGlow 2s ease-in-out infinite}
+  .btn.hubcta::after{content:"";position:absolute;top:0;left:-75%;width:45%;height:100%;
+    background:linear-gradient(115deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.9) 50%,rgba(255,255,255,0) 100%);
+    transform:skewX(-18deg);animation:hubShine 2.6s ease-in-out infinite}
+  .btn.hubcta:hover{filter:brightness(1.08)}
+  .btn.hubcta:active{filter:none}
+  .btn.hubcta:disabled{animation:none;background:#cfd5e3;color:#7c8494;box-shadow:2px 2px 0 var(--ink);cursor:default}
+  .btn.hubcta:disabled::after{display:none}
+  @keyframes hubShine{0%{left:-75%}55%{left:125%}100%{left:125%}}
+  @keyframes hubGlow{0%,100%{box-shadow:3px 3px 0 var(--ink),0 0 0 0 rgba(18,160,214,.0)}50%{box-shadow:3px 3px 0 var(--ink),0 0 18px 5px rgba(18,160,214,.6)}}
+  @media (prefers-reduced-motion: reduce){ .btn.hubcta,.btn.hubcta::after{animation:none} }
   .choices{display:flex;flex-direction:column;gap:10px;margin-top:8px}
   .choice{text-align:left;background:#fff;border:2.5px solid var(--ink);
     border-radius:14px;padding:13px 15px;font-size:14.5px;transition:.08s;line-height:1.45;font-weight:600;box-shadow:2px 2px 0 var(--ink)}
@@ -203,6 +217,9 @@
   .ctaband{text-align:center;background:var(--yellow);border:2.5px solid var(--ink);border-radius:16px;padding:20px 16px;box-shadow:4px 4px 0 var(--ink)}
   .ctaband h2{margin:0 0 6px}
   .ctaband .disc{font-size:11px;color:#6b5a1a;margin-top:12px;line-height:1.5}
+  .ctaband.hubband{background:linear-gradient(135deg,#0b3d3d 0%,#0e2f57 100%);color:#fff}
+  .ctaband.hubband h2{color:#fff}
+  .ctaband.hubband .sub{color:#c8e6e6}
   .resulthero{position:relative;border:2.5px solid var(--ink);border-radius:16px 16px 0 0;border-bottom:none;overflow:hidden;background:#efe4c8 center/cover no-repeat;padding:20px 0 24px;display:flex;justify-content:center}
   .resulthero .shine{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 120%,rgba(255,255,255,.35),transparent 60%)}
   .resulthero .idwrap{position:relative;z-index:1}
@@ -630,9 +647,9 @@ function enterHub(){
 }
 function renderHubEnter(ready){
   var h=document.getElementById('hubEnter'); if(!h) return;
-  h.innerHTML='<div class="card ctaband" style="margin-top:10px"><h2>🏢 KIPlay 로비로 입장</h2>'
+  h.innerHTML='<div class="card ctaband hubband" style="margin-top:10px"><h2>🏢 KIPlay 로비로 입장</h2>'
     +'<p class="sub" style="margin:0">이 사원증의 <b>'+(G.result&&G.result.ch?G.result.ch.name:'')+'</b> 캐릭터가 로비의 내 아바타가 돼요.</p><div style="height:10px"></div>'
-    +'<button class="btn blue" style="width:100%" onclick="enterHub()" '+(ready?'':'disabled')+'>'+(ready?'로비 입장하기 →':'사원증 만드는 중…')+'</button></div>';
+    +'<button class="btn hubcta" style="width:100%" onclick="enterHub()" '+(ready?'':'disabled')+'>'+(ready?'✨ 로비 입장하기 →':'사원증 만드는 중…')+'</button></div>';
 }
 
 /* ---------- 상태 ---------- */
@@ -725,8 +742,6 @@ function refreshSharedLB(entry){
 /* ============================================================ 렌더 ============================================================ */
 const app=document.getElementById("app");
 function el(h){app.innerHTML=h;}
-const DEFAULT_SEED="KIPI-2026-R1";
-
 const TYPE_COLOR={기획력:"#2f6fed",소통력:"#e8503a",행정력:"#0f9d78",디지털:"#6c5ce7",조직이해도:"#e6892b",창의력:"#e84393",균형:"#e6892b",한량:"#3b9bd6"};
 function idBadge(char, o){ o=o||{};
   var plain=!!o.plain, tc=o.color||"#8a94a8";
@@ -793,7 +808,6 @@ function screenStart(){
     <div style="height:12px"></div>
     <button class="btn blue" onclick="start()">지금 시작하기 →</button>
   </div>
-  ${loadLB(DEFAULT_SEED).length?`<div class="card"><h2>🏆 대회 리더보드 (${DEFAULT_SEED})</h2>${lbTable(DEFAULT_SEED,null)}</div>`:``}
   `);
 }
 function start(){
@@ -1190,7 +1204,7 @@ function makeCard(){
       '<img id="cardImg" src="'+url+'" alt="결과 카드" style="max-width:100%;border:2.5px solid #1c1a17;border-radius:12px;display:block;box-shadow:2px 2px 0 #1c1a17"/>'
      +'<div class="sharegrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">'
      +'<button id="saveCardBtn" class="btn blue" style="margin:0">💾 이미지 저장</button>'
-     +'<button id="shareAnyBtn" class="btn blue" style="margin:0;background:#1c1a17">📤 다른 앱으로 공유</button>'
+     +'<button id="shareAnyBtn" class="btn ghost" style="margin:0">📤 다른 앱으로 공유</button>'
      +'<button id="shareKakaoBtn" class="btn" style="margin:0;background:#fee500;color:#1c1a17">💬 카카오톡</button>'
      +'<button id="shareThreadsBtn" class="btn" style="margin:0;background:#000;color:#fff">🧵 Threads</button>'
      +'<button id="shareInstaBtn" class="btn" style="margin:0;grid-column:1/-1;background:linear-gradient(90deg,#f58529,#dd2a7b,#8134af);color:#fff">📸 Instagram</button>'
